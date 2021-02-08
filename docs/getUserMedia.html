@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>getUserMedia sample</title>
+</head>
+<body>
+  <div>
+    This is part of <a href="https://developers.google.com/web/fundamentals/media/capturing-images/?hl=ja">Web Fundamentals</a> by Google.
+  </div>
+  <div>
+    <video id="player" controls autoplay></video>
+  </div>
+  <INPUT type="button" onclick="history.back()" value="Back">
+</body>
+</html>
+<script>
+  const player = document.getElementById('player');
+
+  const constraints = {
+    video: true,
+  };
+
+  navigator.mediaDevices.getUserMedia(constraints)
+    .then((stream) => {
+      player.srcObject = stream;
+    });
+</script>
