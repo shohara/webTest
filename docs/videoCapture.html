@@ -67,14 +67,13 @@
             let begin = Date.now();
 
             // start processing.
-            if( src==null ){
-                // 初期化して使いまわす。
-                src = new cv.Mat(player.height, player.width, cv.CV_8UC4);
-                dst = new cv.Mat(player.height, player.width, cv.CV_8UC1);
-            }
+            src = new cv.Mat(player.height, player.width, cv.CV_8UC4);
+            dst = new cv.Mat();
             cap.read(src);
             cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
             cv.imshow('canvasOutput', dst);
+            src.delete();
+            dst.delete();
 
             // schedule the next one.
             let delay = 1000/FPS - (Date.now() - begin);
