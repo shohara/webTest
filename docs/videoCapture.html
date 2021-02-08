@@ -53,12 +53,13 @@
         // ビデオ再生が可能になった
         player.width = player.videoWidth // width, heightを設定しないとcap.read(src)で失敗する。
         player.height = player.videoHeight
+        setTimeout(processVideo, 100);
     };
 
     const FPS = 30;
     function processVideo() {
         try {
-            if(cap==null || player.videoWidth == 0 || player.width!=player.videoWidth){
+            if(cap==null){
                 // OpenCVのロードが終わり、Videoのフレームがくるのを待つ
                 setTimeout(processVideo, 100);
                 return;
@@ -82,8 +83,5 @@
             console.error(err.message);
         }
     };
-
-    // schedule the first one.
-    setTimeout(processVideo, 0);
 </script>
 
