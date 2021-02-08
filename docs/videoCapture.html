@@ -16,6 +16,7 @@
     let src = null;
     let dst = null;
     let cap = null;
+    let isCvLoaded = false
 
     function onOpenCvReady() {
         // OpenCV.jsのロードが終わったら呼ばれる
@@ -33,9 +34,10 @@
             }
         }
     };
+
     function onloadCallback() {
         // OpenCV.jsのロード完了
-        cap = new cv.VideoCapture(player);
+        isCvLoaded = true;
     };
 
     const constraints = {
@@ -59,10 +61,12 @@
     const FPS = 30;
     function processVideo() {
         try {
-            if(cap==null){
-                // OpenCVのロードが終わり、Videoのフレームがくるのを待つ
+            if(!isCvLoaded){
                 setTimeout(processVideo, 100);
                 return;
+            }else if(cap==null){
+                // OpenCVのロードが終わり、Videoのフレームがくるのを待つ
+                cap = new cv.VideoCapture(player);
             }
             let begin = Date.now();
 
@@ -81,6 +85,7 @@
         } catch (err) {
             console.error(err.message);
         }
+        return;
     };
 </script>
 
