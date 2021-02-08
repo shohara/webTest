@@ -58,7 +58,7 @@
     const FPS = 30;
     function processVideo() {
         try {
-            if(cap==null || player.width==0){
+            if(cap==null || player.width!=player.videoWidth){
                 // OpenCVのロードが終わり、Videoのフレームがくるのを待つ
                 setTimeout(processVideo, 100);
                 return;
