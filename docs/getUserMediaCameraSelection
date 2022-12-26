@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-181029586-2"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'UA-181029586-2');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>getUserMedia sample</title>
+</head>
+<body>
+  <div>
+    <!-- カメラ選択ドロップダウンリスト -->
+    <select id="cameraList"></select>
+    <!-- ビデオ開始・終了ボタン -->
+    <button id="startStopButton">Start</button>
+  </div>
+  <div>
+    <!-- ビデオ表示 -->
+    <video id="player" controls playsinline muted autoplay></video>
+  </div>
+</body>
+</html>
+<script>
+  const player = document.getElementById('player');
+  var isPlaying = false;
+  var cameraId = '';
+
+  // カメラ選択ドロップダウンリストを作成
+  const cameraList = document.getElementById('cameraList');
+  navigator.mediaDevices.enumerateDevices()
+    .then((devices) => {
+      devices.forEach((device) => {
+        if (device.kind === 'videoinput') {
+          const option = document.createElement('option');
+          option.value = device.deviceId;
+          option.text = device.label;
+          cameraList.appendChild(option);
+        }
+      });
+    })
+    .catch((error) => {
+      console.error('Error:', error);
+    });
+
+  // カメラ選択ドロップダウンリストの変更イベント
+  cameraList.addEventListener('change', () => {
+    cameraId = cameraList.value;
+    if( isPlaying ) {
+      stopVideo();
+      startVideo();
+    }
+  });
+
+  // ビデオ開始
+  const startStopButton = document.getElementById('startStopButton');
+  startStopButton.addEventListener('click', () => {
+    if (isPlaying) {
+      stopVideo();
+      startStopButton.textContent = 'Start';
+    } else {
+      startVideo();
+      startStopButton.textContent = 'Stop';
+    }
+    isPlaying = !isPlaying;
+  });
+
+  // ビデオストリームを取得
+  const startVideo = () => {
+    var constraints = {
+      video: true
+    };
+    if (cameraId !== '') {
+      constraints = {
+        video: {
+          deviceId: { exact: cameraId }
+        }
+      };
+    }
+    navigator.mediaDevices.getUserMedia(constraints)
+      .then((stream) => {
+        player.srcObject = stream;
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+      });
+    return;
+  };
+
+  // ビデオストリームを終了
+  const stopVideo = () => {
+    const stream = player.srcObject;
+    const tracks = stream.getTracks();
+
+    tracks.forEach((track) => {
+      track.stop();
+    });
+
+    player.srcObject = null;
+  };
+</script>
