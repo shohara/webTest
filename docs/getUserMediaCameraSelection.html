@@ -18,10 +18,18 @@
 </head>
 <body>
   <div>
+    <!-- カメラの使用許可を確認 -->
+    <button id="checkPermissionButton">Check Permission</button>
+  </div>
+  <div>
     <!-- カメラ選択ドロップダウンリスト -->
-    <select id="cameraList"></select>
+    <select id="cameraList" disabled></select>
+    <!-- カメラ解像度のドロップダウンリスト -->
+    <select id="resolutionList" disabled></select>
+  </div>
+  <div>
     <!-- ビデオ開始・終了ボタン -->
-    <button id="startStopButton">Start</button>
+    <button id="startStopButton" disabled>Start</button>
   </div>
   <div>
     <!-- ビデオ表示 -->
@@ -31,33 +39,129 @@
 </html>
 <script>
   const player = document.getElementById('player');
+  var isConfirmed = false;
+  var selectedResolutionIdx = 0;
   var isPlaying = false;
   var cameraId = '';
+
+  // カメラの使用許可を確認
+  const checkPermissionButton = document.getElementById('checkPermissionButton');
+  checkPermissionButton.addEventListener('click', () => {
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(() => {
+        isConfirmed = true;
+        cameraList.disabled = false;
+        startStopButton.disabled = false;
+        checkPermissionButton.disabled = true;
+        console.log('Permission OK');
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+      });
+  });
 
   // カメラ選択ドロップダウンリストを作成
   const cameraList = document.getElementById('cameraList');
   navigator.mediaDevices.enumerateDevices()
     .then((devices) => {
-      devices.forEach((device) => {
+      for( let i = 0; i < devices.length; i++ ) {
+        const device = devices[i];
         if (device.kind === 'videoinput') {
           const option = document.createElement('option');
           option.value = device.deviceId;
           option.text = device.label;
           cameraList.appendChild(option);
         }
-      });
+      }
+      if(cameraList.length>0) {
+        cameraList.se
+        cameraId = cameraList[0].value;
+        showResolutions(cameraId);
+      }
     })
     .catch((error) => {
       console.error('Error:', error);
     });
 
-  // カメラ選択ドロップダウンリストの変更イベント
-  cameraList.addEventListener('change', () => {
-    cameraId = cameraList.value;
+  // カメラ解像度のドロップダウンリストを作成
+  const resolutionList = document.getElementById('resolutionList');
+
+  // カメラ解像度の選択イベント
+  resolutionList.addEventListener('change', () => {
+    selectedResolutionIdx = resolutionList.selectedIndex;
     if( isPlaying ) {
       stopVideo();
       startVideo();
     }
+  });
+
+  // カメラが取りうる解像度を取得
+  const getSupportedResolutions = (deviceId) => {
+    return new Promise((resolve, reject) => {
+      const constraints = {
+        video: {
+          deviceId: { exact: deviceId }
+        }
+      };
+      navigator.mediaDevices.getUserMedia(constraints)
+        .then((stream) => {
+          const track = stream.getVideoTracks()[0];
+          const capabilities = track.getCapabilities();
+          const settings = track.getSettings();
+          const resolutions = [];
+          if (capabilities.width) {
+            const width = capabilities.width.max;
+            const height = capabilities.height.max;
+            resolutions.push({ width: width, height: height });
+
+            if(settings.width !== width || settings.height !== height) {
+              resolutions.push({ width: settings.width, height: settings.height });
+            }
+          } else {
+            resolutions.push({ width: settings.width, height: settings.height });
+          }
+          resolve(resolutions);
+        })
+        .catch((error) => {
+          reject(error);
+        });
+    });
+  };
+
+  // 解像度一覧の表示
+  const showResolutions = (cameraId) => {
+    getSupportedResolutions(cameraId)
+      .then((resolutions) => {
+        var largest = 0;
+        resolutionList.innerHTML = '';
+        for( let i = 0; i < resolutions.length; i++ ) {
+          const option = document.createElement('option');
+          const size = resolutions[i].width;
+          if (size > largest) {
+            largest = size;
+            selectedResolutionIdx = i;
+          }
+          option.value = resolutions[i].width;
+          option.text = resolutions[i].width;
+          resolutionList.appendChild(option);
+          console.log(option.text);
+        }
+        resolutionList.disabled = false;
+
+        if( isPlaying ) {
+          stopVideo();
+          startVideo();
+        }
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+      });
+  };
+
+  // カメラ選択ドロップダウンリストの変更イベント
+  cameraList.addEventListener('change', () => {
+    cameraId = cameraList.value;
+    showResolutions(cameraId);
   });
 
   // ビデオ開始
@@ -81,6 +185,8 @@
     if (cameraId !== '') {
       constraints = {
         video: {
+          // カメラと解像度を指定
+          width: { exact: resolutionList[selectedResolutionIdx].value },
           deviceId: { exact: cameraId }
         }
       };
