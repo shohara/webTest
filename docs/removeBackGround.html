@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BodyPix Background Removal</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix"></script>
+</head>
+<body>
+  <h1>背景除去 by BodyPix</h1>
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="output"></canvas>
+  <div>
+    This code is in the <a href="https://github.com/shohara/webTest/docs/removeBackGround.html" target="_blank">GitHub repo</a>.
+  </div>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('output');
+    const ctx = canvas.getContext('2d');
+
+    async function setupCamera() {
+      // カメラストリームを取得
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+
+      // ビデオが再生可能になるまで待機
+      return new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          resolve(video);
+        };
+      });
+    }
+
+    async function loadBodyPixModel() {
+      // BodyPixモデルを読み込み
+      return await bodyPix.load({
+        // architecture: 'MobileNetV1', // 'ResNet50', 'MobileNetV1', default: 'MobileNetV1'
+        // multiplier: 0.75, // 0.50 (for mobile) ～ 1.00 (for GPU), default: 0.75, モデルのサイズと精度
+        // outputStride: 16, // 8, 16, 32, default: 16, 特徴マップの解像度
+        // quantBytes: 2, // 1, 2, 4, default: 2, モデルの精度
+        // internalResolution: 'high', // 'low', 'medium', 'high', 'full', default: 'medium'
+        // segmentationThreshold: 0.6, // 0.0 ～ 1.0, default: 0.5
+        // internalResolution: 'medium', // 'low', 'medium', 'high', 'full', default: 'medium'
+        // maxDetections: 1 // default: 1, 人数
+      });
+    }
+
+    async function startBackgroundRemoval() {
+      await setupCamera();
+      const net = await loadBodyPixModel();
+
+      // Canvasのサイズをビデオに合わせる
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      // 背景画像の読み込み
+      const backgroundImage = new Image();
+      backgroundImage.src = './background.jpg';
+
+      backgroundImage.onload = () => {
+        // 背景画像を描画
+        ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+        const backgroundImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const backgroundData = backgroundImageData.data;
+
+        async function processFrame() {
+          // 人物セグメンテーションを実行
+          const segmentation = await net.segmentPerson(video, {
+            // flipHorizontal: false, // ミラーリングしない
+          });
+
+          // 現在のビデオフレームを取得
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const videoImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const videoData = videoImageData.data;
+
+          // セグメンテーションデータ
+          const mask = segmentation.data;
+
+          // 出力用のイメージデータを取得
+          const outputImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const outputData = outputImageData.data;
+
+          // マスクに基づいて人物部分のみを描画
+          for (let i = 0; i < mask.length; i++) {
+            const pixelIndex = i * 4;
+            if (mask[i] === 1) { // 人物ピクセルの場合
+              outputData[pixelIndex + 3] = 255;                     // アルファ値（不透明）
+            } else { // 背景ピクセルの場合
+              outputData[pixelIndex] = backgroundData[pixelIndex];       // R値
+              outputData[pixelIndex + 1] = backgroundData[pixelIndex + 1]; // G値
+              outputData[pixelIndex + 2] = backgroundData[pixelIndex + 2]; // B値
+              outputData[pixelIndex + 3] = 255;                     // アルファ値（不透明）
+            }
+          }
+
+          ctx.putImageData(outputImageData, 0, 0);
+
+          requestAnimationFrame(processFrame); // 次フレームの処理
+        }
+
+        processFrame();
+      }
+    }
+
+    startBackgroundRemoval().catch(console.error);
+  </script>
+</body>
+</html>
